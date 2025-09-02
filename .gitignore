@@ -1,6 +1,7 @@
 # Gradle stuff
 .gradle
-build
+build/
+bin/
 
 # Java stuff
 *.class
