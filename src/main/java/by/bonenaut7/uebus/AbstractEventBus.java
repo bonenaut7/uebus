@@ -178,7 +178,7 @@ public abstract class AbstractEventBus {
 	 * @param eventHandler The class object with annotated methods
 	 */
 	public void registerStatic(Class<?> eventHandler) {
-		register(eventHandler, null);
+		registerStatic(eventHandler, null);
 	}
 	
 	/**
@@ -191,7 +191,7 @@ public abstract class AbstractEventBus {
 	 */
 	public List<EventRegistration> registerStatic(Class<?> eventHandler, List<EventRegistration> out) {
 		Objects.requireNonNull(eventHandler, "eventHandler cannot be null.");
-		registerAnnotated(eventHandler.getClass(), null, true, out);
+		registerAnnotated(eventHandler, null, true, out);
 		return out;
 	}
 	
@@ -300,11 +300,12 @@ public abstract class AbstractEventBus {
 		try {
 			for (final Method method : type.getDeclaredMethods()) {
 				try {
-					if (Modifier.isStatic(method.getModifiers()) != registerStatic) {
+					final boolean isStatic = Modifier.isStatic(method.getModifiers());
+					if (isStatic != registerStatic) {
 						continue; // Skip if we don't register static methods
 					}
 					
-					final EventListener annotation = checkIsListenerValid(method, instance);
+					final EventListener annotation = checkIsListenerValid(method, !isStatic ? instance : null);
 					if (annotation == null) {
 						continue; // The method failed listener validity checks, skippin' it...
 					}
@@ -313,7 +314,12 @@ public abstract class AbstractEventBus {
 					final MethodHandle handle = lookup.unreflect(method);
 					final List registrations = getListenerRegistrations(eventType);
 					
-					final EventRegistration registration = new EventRegistration<>(eventType, new MethodHandleInvoker<>(handle), annotation.priority(), annotation.ignoreCancellation());
+					final EventRegistration registration = new EventRegistration<>(
+						eventType,
+						isStatic ? new MethodHandleStaticInvoker<>(handle) : new MethodHandleVirtualInvoker(handle, instance),
+						annotation.priority(),
+						annotation.ignoreCancellation()
+					);
 					
 					this.writeLock.lock();
 					try {
@@ -353,16 +359,31 @@ public abstract class AbstractEventBus {
 	}
 	
 	// Plain class > lambda calls
-	private static final class MethodHandleInvoker<T extends Event> implements EventDelegate<T> {
+	private static final class MethodHandleStaticInvoker<T extends Event> implements EventDelegate<T> {
 		private final MethodHandle handle;
 		
-		private MethodHandleInvoker(MethodHandle handle) {
+		private MethodHandleStaticInvoker(MethodHandle handle) {
 			this.handle = handle;
 		}
 
 		@Override
 		public void handle(T event) throws Throwable {
 			this.handle.invoke(event);
+		}
+	}
+	
+	private static final class MethodHandleVirtualInvoker<T extends Event> implements EventDelegate<T> {
+		private final MethodHandle handle;
+		private final Object instance;
+		
+		private MethodHandleVirtualInvoker(MethodHandle handle, Object instance) {
+			this.handle = handle;
+			this.instance = instance;
+		}
+
+		@Override
+		public void handle(T event) throws Throwable {
+			this.handle.invoke(this.instance, event);
 		}
 	}
 }
