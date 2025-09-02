@@ -2,7 +2,7 @@ package by.bonenaut7.uebus;
 
 import java.util.Objects;
 
-public final class EventRegistration<T> implements Comparable<EventRegistration<T>> {
+public final class EventRegistration<T extends Event> implements Comparable<EventRegistration<T>> {
 	private final Class<T> type;
 	private final int priority;
 	private final boolean ignoreCancellation;

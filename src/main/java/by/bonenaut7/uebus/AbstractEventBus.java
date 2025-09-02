@@ -353,7 +353,7 @@ public abstract class AbstractEventBus {
 	}
 	
 	// Plain class > lambda calls
-	private static final class MethodHandleInvoker<T> implements EventDelegate<T> {
+	private static final class MethodHandleInvoker<T extends Event> implements EventDelegate<T> {
 		private final MethodHandle handle;
 		
 		private MethodHandleInvoker(MethodHandle handle) {
