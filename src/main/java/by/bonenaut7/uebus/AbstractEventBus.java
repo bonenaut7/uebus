@@ -10,10 +10,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public abstract class AbstractEventBus {
 	protected static final Class<Event> EVENT_CLASS = Event.class;
+	
+	protected final ReentrantReadWriteLock reentrantLock = new ReentrantReadWriteLock();
+	protected final Lock readLock = reentrantLock.readLock();
+	protected final Lock writeLock = reentrantLock.writeLock();
 	
 	protected final Map<Class<? extends Event>, List<EventRegistration>> eventRegistry;
 	protected EventRegistrationListFactory registryListFactory;
@@ -99,12 +105,18 @@ public abstract class AbstractEventBus {
 		Objects.requireNonNull(type, "type cannot be null.");
 		Objects.requireNonNull(delegate, "delegate cannot be null.");
 		
-		final List<EventRegistration> registrations = getListenerRegistrations(type);
 		final EventRegistration<T> registration = new EventRegistration<>(type, delegate, priority, ignoreCancellation);
 		
-		if (registrations.add(registration)) {
-			registrations.sort(null);
-			return registration;
+		this.writeLock.lock();
+		try {
+			final List<EventRegistration> registrations = getListenerRegistrations(type);
+			
+			if (registrations.add(registration)) {
+				registrations.sort(null);
+				return registration;
+			}
+		} finally {
+			this.writeLock.unlock();
 		}
 		
 		return null;
@@ -208,22 +220,29 @@ public abstract class AbstractEventBus {
 		Objects.requireNonNull(event, "event cannot be null.");
 		
 		final Class<?> eventType = event.getClass();
-		final List<EventRegistration> registrations = this.eventRegistry.get(eventType);
 		
+		this.readLock.lock();
 		try {
-			if (event.isCancellable()) {
-				for (final EventRegistration registration : registrations) {
-					if (!event.isCancelled() || registration.isIgnoringCancellation()) {
-						registration.getDelegate().handle(event);
+			final List<EventRegistration> registrations = this.eventRegistry.get(eventType);
+			if (registrations != null) {
+				try {
+					if (event.isCancellable()) {
+						for (final EventRegistration registration : registrations) {
+							if (!event.isCancelled() || registration.isIgnoringCancellation()) {
+								registration.getDelegate().handle(event);
+							}
+						}
+					} else {
+						for (final EventRegistration registration : registrations) {
+							registration.getDelegate().handle(event);
+						}
 					}
-				}
-			} else {
-				for (final EventRegistration registration : registrations) {
-					registration.getDelegate().handle(event);
+				} catch (Throwable throwable) {
+					handleException(throwable);
 				}
 			}
-		} catch (Throwable throwable) {
-			handleException(throwable);
+		} finally {
+			this.readLock.unlock();
 		}
 		
 		return event;
@@ -252,7 +271,7 @@ public abstract class AbstractEventBus {
 		}
 	}
 	
-	protected List<EventRegistration> getListenerRegistrations(final Class<? extends Event> eventType) {
+	protected List<EventRegistration> getListenerRegistrations(final Class eventType) {
 		List<EventRegistration> registrations = this.eventRegistry.get(eventType);
 		if (registrations == null) {
 			registrations = this.registryListFactory.create();
@@ -295,12 +314,18 @@ public abstract class AbstractEventBus {
 					final List registrations = getListenerRegistrations(eventType);
 					
 					final EventRegistration registration = new EventRegistration<>(eventType, new MethodHandleInvoker<>(handle), annotation.priority(), annotation.ignoreCancellation());
-					if (registrations.add(registration)) {
-						registrations.sort(null);
-						
-						if (registrationsOut != null) {
-							registrationsOut.add(registration);
+					
+					this.writeLock.lock();
+					try {
+						if (registrations.add(registration)) {
+							registrations.sort(null);
+							
+							if (registrationsOut != null) {
+								registrationsOut.add(registration);
+							}
 						}
+					} finally {
+						this.writeLock.unlock();
 					}
 				} catch (IllegalAccessException illegalAccessException) {
 					handleException(illegalAccessException);
