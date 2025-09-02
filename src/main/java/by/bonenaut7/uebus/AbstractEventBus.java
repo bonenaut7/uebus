@@ -297,6 +297,7 @@ public abstract class AbstractEventBus {
 		}
 		
 		// Register the listener
+		this.writeLock.lock();
 		try {
 			for (final Method method : type.getDeclaredMethods()) {
 				try {
@@ -321,17 +322,12 @@ public abstract class AbstractEventBus {
 						annotation.ignoreCancellation()
 					);
 					
-					this.writeLock.lock();
-					try {
-						if (registrations.add(registration)) {
-							registrations.sort(null);
-							
-							if (registrationsOut != null) {
-								registrationsOut.add(registration);
-							}
+					if (registrations.add(registration)) {
+						registrations.sort(null);
+						
+						if (registrationsOut != null) {
+							registrationsOut.add(registration);
 						}
-					} finally {
-						this.writeLock.unlock();
 					}
 				} catch (IllegalAccessException illegalAccessException) {
 					handleException(illegalAccessException);
@@ -339,6 +335,8 @@ public abstract class AbstractEventBus {
 			}
 		} catch (SecurityException securityException) {
 			handleException(securityException);
+		} finally {
+			this.writeLock.unlock();
 		}
 	}
 	
