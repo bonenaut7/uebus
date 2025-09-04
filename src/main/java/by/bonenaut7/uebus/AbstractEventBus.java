@@ -149,31 +149,6 @@ public abstract class AbstractEventBus {
 	}
 	
 	/**
-	 * Looks for plain and static annotated methods and registers them as an event
-	 * listeners.
-	 * 
-	 * @param eventHandler The object with annotated methods.
-	 */
-	public void registerAll(Object eventHandler) {
-		registerAll(eventHandler, null);
-	}
-	
-	/**
-	 * Looks for plain and static annotated methods and registers them as an event
-	 * listeners.
-	 * 
-	 * @param eventHandler The object with annotated methods
-	 * @param out          The list to which listener registrations will be added
-	 * 
-	 * @return <code>out</code> parameter with event registrations added.
-	 */
-	public List<EventRegistration> registerAll(Object eventHandler, List<EventRegistration> out) {
-		Objects.requireNonNull(eventHandler, "eventHandler cannot be null.");
-		registerAnnotated(eventHandler.getClass(), eventHandler, true, out);
-		return out;
-	}
-	
-	/**
 	 * Looks for static annotated methods and registers them as an event listeners.
 	 * 
 	 * @param eventHandler The class object with annotated methods
