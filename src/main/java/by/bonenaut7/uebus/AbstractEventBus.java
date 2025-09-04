@@ -286,15 +286,15 @@ public abstract class AbstractEventBus {
 		
 		final Lookup lookup = MethodHandles.publicLookup();
 		
-		// Check class access
-		try {
-			if (lookup.accessClass(type) == null) {
-				handleException(new IllegalAccessException(String.format("Unable to access class \"%s\" to register event listeners.", type.getSimpleName())));
-			}
-		} catch (IllegalAccessException illegalAccessException) {
-			// We can't even check the access...
-			handleException(illegalAccessException);
-		}
+		// Check class access (Not compliant with Java 8)
+//		try {
+//			if (lookup.accessClass(type) == null) {
+//				handleException(new IllegalAccessException(String.format("Unable to access class \"%s\" to register event listeners.", type.getSimpleName())));
+//			}
+//		} catch (IllegalAccessException illegalAccessException) {
+//			// We can't even check the access...
+//			handleException(illegalAccessException);
+//		}
 		
 		// Register the listener
 		this.writeLock.lock();
@@ -345,7 +345,7 @@ public abstract class AbstractEventBus {
 		
 		final EventListener annotation = method.getAnnotation(EventListener.class);
 		if (annotation != null && // If annotation is present
-			method.canAccess(instance) && // If method can be accessed
+			// method.canAccess(instance) && // If method can be accessed (Not compliant with Java 8)
 			method.getReturnType() == Void.TYPE && // If method's return type is void (... void methodName(...))
 			method.getParameterCount() == 1 && // If method's parameter count is 1 (... methodName(Parameter1))
 			EVENT_CLASS.isAssignableFrom(method.getParameterTypes()[0]) // If parameter is child of an Event type (... methodName(<? extends Event> param))
