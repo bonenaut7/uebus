@@ -3,6 +3,7 @@ package by.bonenaut7.uebus;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -312,16 +313,17 @@ public abstract class AbstractEventBus {
 					}
 					
 					final Class eventType = method.getParameterTypes()[0];
-					final MethodHandle handle = lookup.unreflect(method);
 					final List registrations = getListenerRegistrations(eventType);
+					final EventDelegate delegate = isStatic ?
+						new MethodHandleStaticInvoker<>( // Static methods invoker
+							lookup.findStatic(type, method.getName(), MethodType.methodType(Void.TYPE, eventType))
+						) :
+						new MethodHandleVirtualInvoker<>( // Virtual methods invoker
+							lookup.findVirtual(type, method.getName(), MethodType.methodType(Void.TYPE, eventType)),
+							instance
+						);
 					
-					final EventRegistration registration = new EventRegistration<>(
-						eventType,
-						isStatic ? new MethodHandleStaticInvoker<>(handle) : new MethodHandleVirtualInvoker(handle, instance),
-						annotation.priority(),
-						annotation.ignoreCancellation()
-					);
-					
+					final EventRegistration registration = new EventRegistration<>(eventType, delegate, annotation.priority(), annotation.ignoreCancellation());
 					if (registrations.add(registration)) {
 						registrations.sort(null);
 						
@@ -329,8 +331,8 @@ public abstract class AbstractEventBus {
 							registrationsOut.add(registration);
 						}
 					}
-				} catch (IllegalAccessException illegalAccessException) {
-					handleException(illegalAccessException);
+				} catch (IllegalAccessException | NoSuchMethodException exception) {
+					handleException(exception);
 				}
 			}
 		} catch (SecurityException securityException) {
