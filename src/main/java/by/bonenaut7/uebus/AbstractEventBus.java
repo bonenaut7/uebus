@@ -187,7 +187,7 @@ public abstract class AbstractEventBus {
 	/**
 	 * Posts an event and returns it.
 	 * 
-	 * @param <R> An event type.
+	 * @param <T> An event type.
 	 * @param event An event to be posted.
 	 * 
 	 * @return Specified <code>event</code> parameter.

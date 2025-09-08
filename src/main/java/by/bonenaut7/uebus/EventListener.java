@@ -29,7 +29,7 @@ public @interface EventListener {
 	/**
 	 * Indicates whether listener ignores events cancelled beforehand.
 	 * 
-	 * @return <true>true</code> whether event should pass even if it's cancelled,
+	 * @return <code>true</code> whether event should pass even if it's cancelled,
 	 *         <code>false</code> otherwise.
 	 */
 	boolean ignoreCancellation() default DEFAULT_IGNORE_CANCELLATION;
