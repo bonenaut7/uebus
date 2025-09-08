@@ -41,6 +41,8 @@ public abstract class Event {
 	 * Returns modified cancellation value if so required.
 	 * 
 	 * @param cancelled The cancellation value
+	 * 
+	 * @return modified cancellation value
 	 */
 	protected boolean onCancellation(boolean cancelled) {
 		return cancelled; // NO-OP

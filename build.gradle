@@ -8,14 +8,105 @@ buildscript {
     }
 }
 
-apply plugin: 'eclipse'
-apply plugin: 'java-library'
+plugins {
+	id 'eclipse'
+	id 'java-library'
+	id 'maven-publish'
+	id 'org.jreleaser' version '1.20.0'
+}
+
+def libraryName = 'uebus'
+group = 'by.bonenaut7'
+version = '1.0.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
 
 	withSourcesJar()
+	withJavadocJar()
 }
 
-archivesBaseName = 'uebus-1.0.0'
+publishing {
+	publications {
+		maven(MavenPublication) {
+			from components.java
+
+			artifactId = libraryName
+			groupId = "${group}"
+			version = "${version}"
+
+			pom {
+				name = libraryName
+				description = 'Thread-safe universal event bus.'
+				url = 'https://github.com/bonenaut7/uebus/'
+				inceptionYear = '2025'
+
+				licenses {
+					license {
+						name = 'MIT'
+						url = "https://opensource.org/licenses/MIT"
+					}
+				}
+
+				developers {
+					developer {
+						id = 'bonenaut7'
+					}
+				}
+
+				scm {
+					url = "https://github.com/bonenaut7/uebus/"
+					connection = "scm:git:git@github.com:bonenaut7/uebus.git"
+					developerConnection = "scm:git:git@github.com:bonenaut7/uebus.git"
+				}
+			}
+		}
+	}
+
+	repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+jreleaser {
+	project {
+		snapshot {
+			pattern = '.*-SNAPSHOT'
+			fullChangelog = true
+		}
+	}
+
+	signing {
+		active = 'ALWAYS'
+		armored = true
+		verify = true
+		mode = 'FILE'
+	}
+
+	release {
+		github {
+			skipRelease = true
+			skipTag = true
+		}
+	}
+
+	deploy {
+		maven {
+			mavenCentral {
+				sonatype {
+					active = 'ALWAYS'
+					url = "https://central.sonatype.com/api/v1/publisher"
+					stagingRepository(layout.buildDirectory.dir('staging-deploy').get().toString())
+					sign = true
+					checksums = true
+					sourceJar = true
+					javadocJar = true
+					retryDelay = 60
+				}
+			}
+		}
+	}
+}
